@@ -1,4 +1,7 @@
-import logging, os, requests, time
+import logging
+import os
+import requests
+import time
 
 from dotenv import load_dotenv
 from http import HTTPStatus
