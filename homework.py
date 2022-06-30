@@ -41,6 +41,8 @@ def get_api_answer(current_timestamp) -> dict:
         response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
         if response.status_code == HTTPStatus.OK:
             return response.json()
+        raise Exception(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
+                        f'Заголовки: {HEADERS}. Параметры: {params}')
     except Exception:
         raise Exception(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
                         f'Заголовки: {HEADERS}. Параметры: {params}')
@@ -65,31 +67,33 @@ def check_response(response) -> dict:
     raise TypeError('Результат запроса API не соответствует ожиданиям')
 
 
-def parse_status(homework) -> dict:
+def parse_status(homework):
     """Проверяет элемент на соответствие требованиям.
     и формирует необходимый результат.
     """
-    if ('homework_name' and 'status') in homework:
+    if 'homework_name' in homework:
         homework_name = homework['homework_name']
-        homework_status = homework['status']
-        if homework_status in HOMEWORK_STATUSES:
-            verdict = HOMEWORK_STATUSES[homework_status]
-            return (f'Изменился статус проверки работы "{homework_name}".'
-                    f'Новый статус: "{verdict}".')
-        raise Exception('Отсутствуют необходимые ключи в ответе API')
+    else:
+        raise KeyError('Отсутствуют ожидаемые ключи в ответе API')
+    homework_status = homework['status']
+    if homework_status in HOMEWORK_STATUSES:
+        verdict = HOMEWORK_STATUSES[homework_status]
+        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    raise KeyError('Отсутствуют ожидаемые ключи в ответе API')
 
 
 def check_tokens() -> bool:
     """Проверяет наличие необходимых переменных окружения."""
     if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         return True
-    raise Exception('Отсутствуют необходимые переменные окружения')
+    else:
+        return False
 
 
 def main() -> None:
     """Основная логика работы бота."""
     bot = Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = 1655286307
+    current_timestamp = int(time.time())
     while True:
         try:
             check_tokens()
