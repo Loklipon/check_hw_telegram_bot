@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from http import HTTPStatus
 from telegram import Bot
 
+from exceptions import NetworkProblem, SendMessageError, ErrorFromAPI
+
 load_dotenv()
 
 
@@ -16,7 +18,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-HOMEWORK_STATUSES = {
+HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
@@ -29,8 +31,8 @@ def send_message(bot, message) -> None:
         response = bot.send_message(TELEGRAM_CHAT_ID, message)
         if response.message_id:
             logging.info('Сообщение успешно отправлено')
-    except Exception:
-        raise Exception('Сообщение в бот не было отправлено')
+    except SendMessageError:
+        raise SendMessageError('Сообщение в бот не было отправлено')
 
 
 def get_api_answer(current_timestamp) -> dict:
@@ -39,13 +41,14 @@ def get_api_answer(current_timestamp) -> dict:
     params = {'from_date': timestamp}
     try:
         response = requests.get(url=ENDPOINT, headers=HEADERS, params=params)
+    except NetworkProblem:
+        raise NetworkProblem(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
+                             f'Заголовки: {HEADERS}. Параметры: {params}')
+    else:
         if response.status_code == HTTPStatus.OK:
             return response.json()
-        raise Exception(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
-                        f'Заголовки: {HEADERS}. Параметры: {params}')
-    except Exception:
-        raise Exception(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
-                        f'Заголовки: {HEADERS}. Параметры: {params}')
+        raise NetworkProblem(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
+                             f'Заголовки: {HEADERS}. Параметры: {params}')
 
 
 def check_response(response) -> dict:
@@ -76,10 +79,10 @@ def parse_status(homework):
     else:
         raise KeyError('Отсутствуют ожидаемые ключи в ответе API')
     homework_status = homework['status']
-    if homework_status in HOMEWORK_STATUSES:
-        verdict = HOMEWORK_STATUSES[homework_status]
+    if homework_status in HOMEWORK_VERDICTS:
+        verdict = HOMEWORK_VERDICTS[homework_status]
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
-    raise KeyError('Отсутствуют ожидаемые ключи в ответе API')
+    raise ErrorFromAPI('Отсутствуют ожидаемые ключи в ответе API')
 
 
 def check_tokens() -> bool:
@@ -92,11 +95,11 @@ def check_tokens() -> bool:
 
 def main() -> None:
     """Основная логика работы бота."""
+    check_tokens()
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     while True:
         try:
-            check_tokens()
             response = get_api_answer(current_timestamp)
             homework = check_response(response)
             message = parse_status(homework)
@@ -113,5 +116,5 @@ if __name__ == '__main__':
     main()
     logging.basicConfig(
         format='%(asctime)s, %(levelname)s, %(message)s',
-        handlers=logging.StreamHandler
+        handlers=[logging.StreamHandler]
     )
