@@ -48,7 +48,8 @@ def get_api_answer(current_timestamp) -> dict:
         if response.status_code == HTTPStatus.OK:
             return response.json()
         raise NetworkProblem(
-            f'API вернул ответ с неподходящим статусом: {response.status_code}')
+            f'API вернул ответ с неподходящим статусом: {response.status_code}'
+        )
 
 
 def check_response(response) -> dict:
