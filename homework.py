@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from http import HTTPStatus
 from telegram import Bot
 
-from exceptions import NetworkProblem, SendMessageError, ErrorFromAPI
+from exceptions import NetworkProblem, SendMessageError, APIError
 
 load_dotenv()
 
@@ -47,8 +47,8 @@ def get_api_answer(current_timestamp) -> dict:
     else:
         if response.status_code == HTTPStatus.OK:
             return response.json()
-        raise NetworkProblem(f'Эндпоинт недоступен. URL: {ENDPOINT}.'
-                             f'Заголовки: {HEADERS}. Параметры: {params}')
+        raise NetworkProblem(
+            f'API вернул ответ с неподходящим статусом: {response.status_code}')
 
 
 def check_response(response) -> dict:
@@ -56,18 +56,18 @@ def check_response(response) -> dict:
     и возвращает необходимый элемент.
     """
     logging.info('Начали проверять ответ от сервера')
+    if 'homeworks' not in response:
+        raise TypeError('Отсутствует ключ homework в ответе от API яндекса')
     if (
-        isinstance(response, dict)
-        and 'homeworks' in response
-        and isinstance(response['homeworks'], list)
-        and len(response['homeworks']) != 0
+        not isinstance(response, dict)
+        or not isinstance(response['homeworks'], list)
     ):
-        if len(response['homeworks']) == 0:
-            logging.debug('Нет обновлений домашних работ')
-        else:
-            homework = response['homeworks'][0]
-            return homework
-    raise TypeError('Результат запроса API не соответствует ожиданиям')
+        raise APIError('Неверный тип данных в ответет API')
+    if len(response['homeworks']) == 0:
+        logging.debug('Нет обновлений домашних работ')
+    else:
+        homework = response['homeworks'][0]
+        return homework
 
 
 def parse_status(homework):
@@ -82,34 +82,31 @@ def parse_status(homework):
     if homework_status in HOMEWORK_VERDICTS:
         verdict = HOMEWORK_VERDICTS[homework_status]
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
-    raise ErrorFromAPI('Отсутствуют ожидаемые ключи в ответе API')
+    raise APIError('Отсутствуют ожидаемые ключи в ответе API')
 
 
 def check_tokens() -> bool:
     """Проверяет наличие необходимых переменных окружения."""
-    if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
-        return True
-    else:
-        return False
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def main() -> None:
     """Основная логика работы бота."""
-    check_tokens()
-    bot = Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = int(time.time())
-    while True:
-        try:
-            response = get_api_answer(current_timestamp)
-            homework = check_response(response)
-            message = parse_status(homework)
-            send_message(bot, message)
-            current_timestamp = int(time.time())
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.error(message)
-        finally:
-            time.sleep(RETRY_TIME)
+    if check_tokens():
+        bot = Bot(token=TELEGRAM_TOKEN)
+        current_timestamp = int(time.time())
+        while True:
+            try:
+                response = get_api_answer(current_timestamp)
+                homework = check_response(response)
+                message = parse_status(homework)
+                send_message(bot, message)
+                current_timestamp = int(time.time())
+            except Exception as error:
+                message = f'Сбой в работе программы: {error}'
+                logging.error(message)
+            finally:
+                time.sleep(RETRY_TIME)
 
 
 if __name__ == '__main__':

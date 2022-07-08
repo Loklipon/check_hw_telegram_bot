@@ -10,7 +10,7 @@ class SendMessageError(Exception):
     pass
 
 
-class ErrorFromAPI(Exception):
+class APIError(Exception):
     """Ошибка API."""
 
     pass
