@@ -14,3 +14,9 @@ class APIError(Exception):
     """Ошибка API."""
 
     pass
+
+
+class TokensError(Exception):
+    """Ошибка API."""
+
+    pass

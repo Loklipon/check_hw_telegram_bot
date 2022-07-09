@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from http import HTTPStatus
 from telegram import Bot
 
-from exceptions import NetworkProblem, SendMessageError, APIError
+from exceptions import NetworkProblem, SendMessageError, APIError, TokensError
 
 load_dotenv()
 
@@ -108,6 +108,8 @@ def main() -> None:
                 logging.error(message)
             finally:
                 time.sleep(RETRY_TIME)
+    else:
+        raise TokensError('Отсутствуют необходимые переменные окружения')
 
 
 if __name__ == '__main__':
