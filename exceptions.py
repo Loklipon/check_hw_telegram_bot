@@ -17,6 +17,6 @@ class APIError(Exception):
 
 
 class TokensError(Exception):
-    """Ошибка API."""
+    """Ошибка наличия переменных окружения."""
 
     pass
