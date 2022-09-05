@@ -65,7 +65,7 @@ def check_response(response) -> dict:
     ):
         raise APIError('Неверный тип данных в ответет API')
     if len(response['homeworks']) == 0:
-        logging.debug('Нет обновлений домашних работ')
+        logging.error('Нет обновлений домашних работ')
     else:
         homework = response['homeworks'][0]
         return homework
