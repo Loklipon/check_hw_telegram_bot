@@ -1,1 +1,1 @@
-web: gunicorn homework.py
+web: python homework.py
