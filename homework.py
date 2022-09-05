@@ -15,7 +15,7 @@ load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-RETRY_TIME = 5
+RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 HOMEWORK_VERDICTS = {
@@ -65,7 +65,7 @@ def check_response(response) -> dict:
     ):
         raise APIError('Неверный тип данных в ответет API')
     if len(response['homeworks']) == 0:
-        logging.error('Нет обновлений домашних работ')
+        logging.debug('Нет обновлений домашних работ')
     else:
         homework = response['homeworks'][0]
         return homework
